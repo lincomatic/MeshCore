@@ -1,0 +1,31 @@
+extra Features:
+
+*** stock f/w has SX1262 RX boosted gain is fixed at compile time (off for G2, on for all other builds). It can be helpful at times, but could be detrimental w/ LNA or in noisy environments. add command to turn it on and off
+get rx.boosted gain: returns ON/OFF
+set rx.boosted.gain (0|1) : disable/enable rx boosted gain
+
+* stock neighbors command only shows zero hop repeaters. add seen command, which shows seen adverts from nodes of all types, and at various hops, along with RSSI
+
+seen [hops] [r|c|m] : r=repeater,c=companion,m=room
+
+seen w/ no parameters returns 0 hop of all types
+
+return value: <pubkey>:<secs since last advert>:<rx snr/4>:<rssi>:<type>
+
+*** noise floor command. logs noise floor and calcs min/max continuously. also logs at 15 min intervals for 24hrs
+
+noise [index|r]
+
+noise w/o parameters returns <current>:<min>:<max>. To reset min/max type "noise r"
+
+noise 0 returns logged noise values starting from the most recent. Since packet data is limited to 157 bytes, noise 20 would return values starting from index 20, etc.
+
+
+
+*** undocumented remote get/set of private key. contact CrisprCAS9 for details.
+
+-----------------------
+20250926 SCL
+- added undocumented command for remote access to private key
+20250923 SCL
+- sort neighbors array in ascending last_heard

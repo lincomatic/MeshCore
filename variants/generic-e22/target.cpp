@@ -74,6 +74,10 @@ void radio_set_tx_power(uint8_t dbm) {
   radio.setOutputPower(dbm);
 }
 
+void radio_set_rx_boosted_gain(uint8_t en) {
+  radio.setRxBoostedGainMode(en);
+}
+
 mesh::LocalIdentity radio_new_identity() {
   RadioNoiseListener rng(radio);
   return mesh::LocalIdentity(&rng);  // create new random identity

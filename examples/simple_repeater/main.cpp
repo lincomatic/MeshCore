@@ -592,6 +592,7 @@ public:
     _prefs.flood_advert_interval = 12;   // 12 hours
     _prefs.flood_max = 64;
     _prefs.interference_threshold = 0;  // disabled
+    _prefs.rx_boosted_gain = SX126X_RX_BOOSTED_GAIN;
   }
 
   void begin(FILESYSTEM* fs) {
@@ -602,6 +603,7 @@ public:
 
     radio_set_params(_prefs.freq, _prefs.bw, _prefs.sf, _prefs.cr);
     radio_set_tx_power(_prefs.tx_power_dbm);
+    radio_set_rx_boosted_gain(_prefs.rx_boosted_gain);
 
     updateAdvertTimer();
     updateFloodAdvertTimer();
@@ -692,43 +694,75 @@ public:
     radio_set_tx_power(power_dbm);
   }
 
-  void formatNeighborsReply(char *reply) override {
-    char *dp = reply;
+  void setRxBoostedGain(bool enable) override {
+    radio_set_rx_boosted_gain(enable);
+  }
 
-#if MAX_NEIGHBOURS
-    for (int i = 0; i < MAX_NEIGHBOURS && dp - reply < 134; i++) {
+#ifdef MAX_NEIGHBOURS
+
+  void formatNeighborsReply(char *reply,char ntype=0,int hops=0)  {
+    char *dp = reply;
+    bool first = true;
+    for (int i = 0; i < seen_count && dp - reply < 134; i++) {
       NeighbourInfo* neighbour = &neighbours[i];
-      if (neighbour->heard_timestamp == 0) continue;    // skip empty slots
+      if (hops != neighbour->hops) continue;
+      else if (ntype) {
+        if (((toupper(ntype) == 'R') && (neighbour->type != ADV_TYPE_REPEATER)) ||
+            ((ntype == 'M') && (neighbour->type != ADV_TYPE_ROOM)) ||
+            ((ntype == 'C') && (neighbour->type != ADV_TYPE_CHAT))) {
+          continue;  // skip if type does not match
+        }
+      }
 
       // add new line if not first item
-      if (i > 0) *dp++ = '\n';
+      if (first) first = false;
+      else *dp++ = '\n';
 
-      char hex[10];
-      // get 4 bytes of neighbour id as hex
-      mesh::Utils::toHex(hex, neighbour->id.pub_key, 4);
+      // 'r' = original neighbors format
+      char hex[10]; 
+      // get 2 or 4 bytes of neighbour id as hex
+      mesh::Utils::toHex(hex, neighbour->id.pub_key, (ntype == 'r') ? 4 : 2);
 
       // add next neighbour
       uint32_t secs_ago = getRTCClock()->getCurrentTime() - neighbour->heard_timestamp;
-      sprintf(dp, "%s:%d:%d", hex, secs_ago, neighbour->snr);
+      if (ntype == 'r') {
+	sprintf(dp, "%s:%d:%d", hex, secs_ago, neighbour->snr);
+      }
+      else {
+	char ntype;
+	if (neighbour->type == ADV_TYPE_REPEATER) ntype = 'R';
+	else if (neighbour->type == ADV_TYPE_ROOM) ntype = 'M';
+	else if (neighbour->type == ADV_TYPE_CHAT) ntype = 'C';
+	else ntype = neighbour->type-'0';  // unknown type - cvt to decimal
+	sprintf(dp, "%s:%d:%d:%d:%c", hex, secs_ago, neighbour->snr, neighbour->rssi, ntype);
+      }
       while (*dp) dp++;   // find end of string
     }
-#endif
     if (dp == reply) {   // no neighbours, need empty response
       strcpy(dp, "-none-"); dp += 6;
     }
     *dp = 0;  // null terminator
   }
 
+  void formatNeighborsReply(char *reply) override {
+    formatNeighborsReply(reply,'r');
+  }
+
+
+  void formatSeenReply(char *reply,char type,int hops) override {
+    formatNeighborsReply(reply,type,hops);
+  }
+
   void removeNeighbor(const uint8_t* pubkey, int key_len) override {
-#if MAX_NEIGHBOURS
     for (int i = 0; i < MAX_NEIGHBOURS; i++) {
       NeighbourInfo* neighbour = &neighbours[i];
       if(memcmp(neighbour->id.pub_key, pubkey, key_len) == 0){
         neighbours[i] = NeighbourInfo(); // clear neighbour entry
       }
     }
-#endif
   }
+
+#endif // MAX_NEIGHBOURS
 
   mesh::LocalIdentity& getSelfId() override { return self_id; }
 

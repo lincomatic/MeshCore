@@ -42,6 +42,10 @@ void radio_set_tx_power(uint8_t dbm) {
   radio.setOutputPower(dbm);
 }
 
+void radio_set_rx_boosted_gain(bool enable) {
+  radio.setRxBoostedGainMode(enable);
+}
+
 void WioTrackerL1SensorManager::start_gps()
 {
   if (!gps_active)

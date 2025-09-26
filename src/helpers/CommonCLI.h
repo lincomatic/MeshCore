@@ -26,6 +26,7 @@ struct NodePrefs {  // persisted to file
     uint8_t flood_max;
     uint8_t interference_threshold;
     uint8_t agc_reset_interval;   // secs / 4
+    uint8_t rx_boosted_gain;
 };
 
 class CommonCLICallbacks {
@@ -42,6 +43,7 @@ public:
   virtual void eraseLogFile() = 0;
   virtual void dumpLogFile() = 0;
   virtual void setTxPower(uint8_t power_dbm) = 0;
+  virtual void setRxBoostedGain(bool enable) = 0;  // default no-op
   virtual void formatNeighborsReply(char *reply) = 0;
   virtual void removeNeighbor(const uint8_t* pubkey, int key_len) {
     // no op by default
@@ -50,6 +52,7 @@ public:
   virtual void saveIdentity(const mesh::LocalIdentity& new_id) = 0;
   virtual void clearStats() = 0;
   virtual void applyTempRadioParams(float freq, float bw, uint8_t sf, uint8_t cr, int timeout_mins) = 0;
+  virtual void rxBoostedGain(uint8_t mode) { /* default no-op */  }
 };
 
 class CommonCLI {

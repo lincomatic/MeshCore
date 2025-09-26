@@ -58,6 +58,7 @@ void CommonCLI::loadPrefsInt(FILESYSTEM* fs, const char* filename) {
     file.read((uint8_t *) &_prefs->flood_max, sizeof(_prefs->flood_max));   // 124
     file.read((uint8_t *) &_prefs->flood_advert_interval, sizeof(_prefs->flood_advert_interval));  // 125
     file.read((uint8_t *) &_prefs->interference_threshold, sizeof(_prefs->interference_threshold));  // 126
+    file.read((uint8_t *) &_prefs->rx_boosted_gain, sizeof(_prefs->rx_boosted_gain));// 127
 
     // sanitise bad pref values
     _prefs->rx_delay_base = constrain(_prefs->rx_delay_base, 0, 20.0f);
@@ -114,7 +115,8 @@ void CommonCLI::savePrefs(FILESYSTEM* fs) {
     file.write((uint8_t *) &_prefs->flood_max, sizeof(_prefs->flood_max));   // 124
     file.write((uint8_t *) &_prefs->flood_advert_interval, sizeof(_prefs->flood_advert_interval));  // 125
     file.write((uint8_t *) &_prefs->interference_threshold, sizeof(_prefs->interference_threshold));  // 126
-
+    file.write((uint8_t *) &_prefs->rx_boosted_gain, sizeof(_prefs->rx_boosted_gain));  // 127
+    
     file.close();
   }
 }
@@ -209,6 +211,8 @@ void CommonCLI::handleCommand(uint32_t sender_timestamp, const char* command, ch
         sprintf(reply, "> %d", ((uint32_t) _prefs->agc_reset_interval) * 4);
       } else if (memcmp(config, "multi.acks", 10) == 0) {
         sprintf(reply, "> %d", (uint32_t) _prefs->multi_acks);
+      } else if (memcmp(config, "rx.boosted.gain", 15) == 0) {
+        sprintf(reply, "> %s", _prefs->rx_boosted_gain ? "on" : "off");
       } else if (memcmp(config, "allow.read.only", 15) == 0) {
         sprintf(reply, "> %s", _prefs->allow_read_only ? "on" : "off");
       } else if (memcmp(config, "flood.advert.interval", 21) == 0) {
@@ -271,6 +275,11 @@ void CommonCLI::handleCommand(uint32_t sender_timestamp, const char* command, ch
         sprintf(reply, "OK - interval rounded to %d", ((uint32_t) _prefs->agc_reset_interval) * 4);
       } else if (memcmp(config, "multi.acks ", 11) == 0) {
         _prefs->multi_acks = atoi(&config[11]);
+        savePrefs();
+        strcpy(reply, "OK");
+      } else if (memcmp(config, "rx.boosted.gain ", 16) == 0) {
+        _prefs->rx_boosted_gain = atoi(&config[16]);
+	_callbacks->setRxBoostedGain((bool)_prefs->rx_boosted_gain);
         savePrefs();
         strcpy(reply, "OK");
       } else if (memcmp(config, "allow.read.only ", 16) == 0) {

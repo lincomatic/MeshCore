@@ -174,6 +174,29 @@ void setup() {
 
 #ifdef WIFI_SSID
   WiFi.begin(WIFI_SSID, WIFI_PWD);
+  Serial.printf("Connecting to WiFi SSID: %s\n", WIFI_SSID);
+  WiFi.mode(WIFI_STA);
+  String hostname = "MESHCORE ";
+  hostname += the_mesh.getNodeName();
+  WiFi.setHostname(hostname.c_str());
+  Serial.printf("Hostname: %s\n", the_mesh.getNodeName());
+  WiFi.begin(WIFI_SSID, WIFI_PWD);
+  for (int i=0;i < 10;i++) {
+    if (WiFi.status() == WL_CONNECTED) break;
+    delay(1000);
+  }
+
+  if (WiFi.status() == WL_CONNECTED) {
+    Serial.print("IP address: ");Serial.println(WiFi.localIP());
+  }
+  else {
+    Serial.println("WiFI failed to connect...rebooting in 30s");
+    delay(30000);
+    ESP.restart();
+  }
+
+  WiFi.setAutoReconnect(true);
+  
   serial_interface.begin(TCP_PORT);
 #elif defined(BLE_PIN_CODE)
   char dev_name[32+16];

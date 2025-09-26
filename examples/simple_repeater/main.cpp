@@ -110,6 +110,15 @@ struct ClientInfo {
   uint8_t out_path[MAX_PATH_SIZE];
 };
 
+#define NOISE_FLOOR_INTERVAL (15*60000) // 15min
+#define NOISE_FLOOR_COUNT 96 // 24hrs @ 15min intervals
+
+
+#define MAX_NEIGHBOURS 32
+#ifndef MAX_NEIGHBOURS
+  #define MAX_NEIGHBOURS 16
+#endif
+  
 #ifndef MAX_CLIENTS
   #define MAX_CLIENTS           32
 #endif
@@ -119,6 +128,9 @@ struct NeighbourInfo {
   uint32_t advert_timestamp;
   uint32_t heard_timestamp;
   int8_t snr; // multiplied by 4, user should divide to get float value
+  int8_t rssi;
+  int8_t type;
+  int8_t hops;
 };
 
 #define CLI_REPLY_DELAY_MILLIS  600
@@ -133,6 +145,13 @@ class MyMesh : public mesh::Mesh, public CommonCLICallbacks {
   ClientInfo known_clients[MAX_CLIENTS];
 #if MAX_NEIGHBOURS
   NeighbourInfo neighbours[MAX_NEIGHBOURS];
+  int seen_count;
+#endif
+#if NOISE_FLOOR_INTERVAL
+  int8_t noise_floor_log[NOISE_FLOOR_COUNT];
+  int noise_floor_count;
+  unsigned long next_noise_floor_log;
+  int16_t  min_noise_floor=1000,max_noise_floor=-1000;
 #endif
   CayenneLPP telemetry;
   unsigned long set_radio_at, revert_radio_at;
@@ -158,32 +177,92 @@ class MyMesh : public mesh::Mesh, public CommonCLICallbacks {
     return oldest;
   }
 
-  void putNeighbour(const mesh::Identity& id, uint32_t timestamp, float snr) {
-  #if MAX_NEIGHBOURS    // check if neighbours enabled
-    // find existing neighbour, else use least recently updated
-    uint32_t oldest_timestamp = 0xFFFFFFFF;
-    NeighbourInfo* neighbour = &neighbours[0];
-    for (int i = 0; i < MAX_NEIGHBOURS; i++) {
-      // if neighbour already known, we should update it
+#if NOISE_FLOOR_INTERVAL
+  void LogNoiseFloor() {
+    static unsigned long lastms = 0;
+
+    int16_t nfloor = radio_driver.getNoiseFloor();
+    if (nfloor < min_noise_floor) min_noise_floor = nfloor;
+    // filter 0 when getNoiseFloor() is called before a valid value is available
+    if ((nfloor > max_noise_floor) && (!(!nfloor && (max_noise_floor == -1000))))
+    	max_noise_floor = nfloor;
+	  
+    if (millisHasNowPassed(next_noise_floor_log)) {
+      if (nfloor < -128) nfloor = -128;
+      else if (nfloor > 127) nfloor = 127;
+        
+      for (int i=noise_floor_count-1;i >= 1;i--) {
+        noise_floor_log[i] = noise_floor_log[i-1];
+      }
+      noise_floor_log[0] = nfloor;
+      if (noise_floor_count < NOISE_FLOOR_COUNT) noise_floor_count++;
+
+      next_noise_floor_log = futureMillis(NOISE_FLOOR_INTERVAL);
+    }
+  }
+
+  void formatNoiseFloorReply(char *reply,int start_index) override {
+    *reply = 0;
+    if (start_index == -2) { // reset min/max
+      min_noise_floor = 1000;
+      max_noise_floor = -1000;
+      LogNoiseFloor();
+      strcpy(reply,"OK");
+    }
+    else {
+      if (!noise_floor_count || (start_index < 0)) {
+	sprintf(reply,"%d:%d:%d",radio_driver.getNoiseFloor(),min_noise_floor,max_noise_floor);
+      }
+      else {
+	char *dp = reply;
+	
+	if (start_index >= noise_floor_count) start_index = 0;
+	for (int i = start_index; i < noise_floor_count && dp - reply < 134; i++) {
+	  sprintf(dp,"%d,",noise_floor_log[i]);
+	  while (*dp) dp++;
+	}
+      }
+    }
+  }
+#endif
+
+#if MAX_NEIGHBOURS    // check if neighbours enabled
+
+static  int compareNeighbour(const void *a, const void *b) {
+    return (((NeighbourInfo*)b)->heard_timestamp - ((NeighbourInfo*)a)->heard_timestamp);
+  }
+  
+  void putNeighbour(const mesh::Identity& id, float snr, float rssi,uint8_t type,int8_t hops) {
+    NeighbourInfo* neighbour = NULL;
+
+    // see if already known
+    for (int i=0;i < seen_count;i++) {
       if (id.matches(neighbours[i].id)) {
         neighbour = &neighbours[i];
         break;
       }
-
-      // otherwise we should update the least recently updated neighbour
-      if (neighbours[i].heard_timestamp < oldest_timestamp) {
-        neighbour = &neighbours[i];
-        oldest_timestamp = neighbour->heard_timestamp;
       }
+
+    if (!neighbour) {
+      if (seen_count < MAX_NEIGHBOURS) seen_count++;
+      neighbour = &neighbours[seen_count-1];
     }
 
-    // update neighbour info
+    // save neighbour info to last slot
     neighbour->id = id;
-    neighbour->advert_timestamp = timestamp;
     neighbour->heard_timestamp = getRTCClock()->getCurrentTime();
     neighbour->snr = (int8_t) (snr * 4);
-  #endif
+    if (rssi < -128) neighbour->rssi = -128;  // limit to -128
+    else if (rssi > 127) neighbour->rssi = 127;  // limit to 127
+    else neighbour->rssi = (int8_t) rssi;
+    neighbour->hops = hops;
+    neighbour->type = type;
+
+    // sort ascending by heard_timestamp
+    qsort(neighbours,seen_count,sizeof(NeighbourInfo),compareNeighbour);
   }
+#endif
+
 
   int handleRequest(ClientInfo* sender, uint32_t sender_timestamp, uint8_t* payload, size_t payload_len) {
    // uint32_t now = getRTCClock()->getCurrentTimeUnique();
@@ -437,12 +516,9 @@ protected:
   void onAdvertRecv(mesh::Packet* packet, const mesh::Identity& id, uint32_t timestamp, const uint8_t* app_data, size_t app_data_len) {
     mesh::Mesh::onAdvertRecv(packet, id, timestamp, app_data, app_data_len);  // chain to super impl
 
-    // if this a zero hop advert, add it to neighbours
-    if (packet->path_len == 0) {
       AdvertDataParser parser(app_data, app_data_len);
-      if (parser.isValid() && parser.getType() == ADV_TYPE_REPEATER) {   // just keep neigbouring Repeaters
-        putNeighbour(id, timestamp, packet->getSNR());
-      }
+    if (parser.isValid()) { 
+      putNeighbour(id, packet->getSNR(),radio_driver.getLastRSSI(), parser.getType(), packet->path_len);
     }
   }
 
@@ -572,6 +648,13 @@ public:
 
   #if MAX_NEIGHBOURS
     memset(neighbours, 0, sizeof(neighbours));
+    seen_count = 0;
+  #endif
+
+  #if NOISE_FLOOR_INTERVAL
+    memset(noise_floor_log, 0, sizeof(noise_floor_log));
+    noise_floor_count = 0;
+    next_noise_floor_log = futureMillis(NOISE_FLOOR_INTERVAL);
   #endif
 
     // defaults
@@ -801,6 +884,8 @@ public:
   void loop() {
     mesh::Mesh::loop();
 
+    LogNoiseFloor();
+      
     if (next_flood_advert && millisHasNowPassed(next_flood_advert)) {
       mesh::Packet* pkt = createSelfAdvert();
       if (pkt) sendFlood(pkt);

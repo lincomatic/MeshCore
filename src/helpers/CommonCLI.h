@@ -45,6 +45,8 @@ public:
   virtual void setTxPower(uint8_t power_dbm) = 0;
   virtual void setRxBoostedGain(bool enable) = 0;  // default no-op
   virtual void formatNeighborsReply(char *reply) = 0;
+  virtual void formatSeenReply(char *reply,char type,int hops) = 0;  
+  virtual void formatNoiseFloorReply(char *reply,int start_index) = 0;
   virtual void removeNeighbor(const uint8_t* pubkey, int key_len) {
     // no op by default
   };

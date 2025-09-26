@@ -167,6 +167,25 @@ void CommonCLI::handleCommand(uint32_t sender_timestamp, const char* command, ch
       }
     } else if (memcmp(command, "neighbors", 9) == 0) {
       _callbacks->formatNeighborsReply(reply);
+    } else if (memcmp(command, "seen", 4) == 0) {
+      strcpy(tmp, &command[5]);
+      char ntype=0;
+      int hops = 0;
+      const char *parts[2];
+      int num = mesh::Utils::parseTextParts(tmp, parts, 2, ' ');
+      if (num > 0) hops = atoi(parts[0]);
+      if (num > 1) ntype = toupper(*(parts[1]));
+      _callbacks->formatSeenReply(reply,ntype,hops);
+    } else if (memcmp(command, "noise", 5) == 0) {
+      int start_index = -1;
+      const char *parts[2];
+      strcpy(tmp, &command[6]);
+      int num = mesh::Utils::parseTextParts(tmp, parts, 1, ' ');
+      if (num > 0) {
+	if (tolower(*(parts[0])) == 'r') start_index = -2; // reset min/max
+	else start_index = atoi(parts[0]);
+      }
+      _callbacks->formatNoiseFloorReply(reply,start_index);
     } else if (memcmp(command, "neighbor.remove ", 16) == 0) {
       const char* hex = &command[16];
       uint8_t pubkey[PUB_KEY_SIZE];

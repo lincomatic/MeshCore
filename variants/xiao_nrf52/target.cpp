@@ -10,12 +10,13 @@ WRAPPER_CLASS radio_driver(radio, board);
 
 VolatileRTCClock fallback_clock;
 AutoDiscoverRTCClock rtc_clock(fallback_clock);
+
 EnvironmentSensorManager sensors;
 
 bool radio_init() {
-    rtc_clock.begin(Wire);
-  
-    return radio.std_init(&SPI);
+  rtc_clock.begin(Wire);
+
+  return radio.std_init(&SPI);
 }
 
 uint32_t radio_get_rng_seed() {
@@ -33,11 +34,7 @@ void radio_set_tx_power(uint8_t dbm) {
   radio.setOutputPower(dbm);
 }
 
-void radio_set_rx_boosted_gain(bool enable) {
-  radio.setRxBoostedGainMode(enable);
-}
-
 mesh::LocalIdentity radio_new_identity() {
   RadioNoiseListener rng(radio);
-  return mesh::LocalIdentity(&rng);  // create new random identity
+  return mesh::LocalIdentity(&rng); // create new random identity
 }

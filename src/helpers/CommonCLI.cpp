@@ -116,7 +116,7 @@ void CommonCLI::savePrefs(FILESYSTEM* fs) {
     file.write((uint8_t *) &_prefs->flood_advert_interval, sizeof(_prefs->flood_advert_interval));  // 125
     file.write((uint8_t *) &_prefs->interference_threshold, sizeof(_prefs->interference_threshold));  // 126
     file.write((uint8_t *) &_prefs->rx_boosted_gain, sizeof(_prefs->rx_boosted_gain));  // 127
-    
+
     file.close();
   }
 }
@@ -182,8 +182,8 @@ void CommonCLI::handleCommand(uint32_t sender_timestamp, const char* command, ch
       strcpy(tmp, &command[6]);
       int num = mesh::Utils::parseTextParts(tmp, parts, 1, ' ');
       if (num > 0) {
-	if (tolower(*(parts[0])) == 'r') start_index = -2; // reset min/max
-	else start_index = atoi(parts[0]);
+	      if (tolower(*(parts[0])) == 'r') start_index = -2; // reset min/max
+	      else start_index = atoi(parts[0]);
       }
       _callbacks->formatNoiseFloorReply(reply,start_index);
     } else if (memcmp(command, "neighbor.remove ", 16) == 0) {
@@ -240,8 +240,7 @@ void CommonCLI::handleCommand(uint32_t sender_timestamp, const char* command, ch
         sprintf(reply, "> %d", ((uint32_t) _prefs->advert_interval) * 2);
       } else if (memcmp(config, "guest.password", 14) == 0) {
         sprintf(reply, "> %s", _prefs->guest_password);
-      } else if ((sender_timestamp == 0 && memcmp(config, "prv.key", 7) == 0) ||  // from serial command line only
-		 !memcmp(config, "rprvkey", 7)) {
+      } else if (sender_timestamp == 0 && memcmp(config, "prv.key", 7) == 0) {  // from serial command line only
         uint8_t prv_key[PRV_KEY_SIZE];
         int len = _callbacks->getSelfId().writeTo(prv_key, PRV_KEY_SIZE);
         mesh::Utils::toHex(tmp, prv_key, len);
@@ -299,7 +298,7 @@ void CommonCLI::handleCommand(uint32_t sender_timestamp, const char* command, ch
         strcpy(reply, "OK");
       } else if (memcmp(config, "rx.boosted.gain ", 16) == 0) {
         _prefs->rx_boosted_gain = atoi(&config[16]);
-	_callbacks->setRxBoostedGain((bool)_prefs->rx_boosted_gain);
+	      _callbacks->setRxBoostedGain((bool)_prefs->rx_boosted_gain);
         savePrefs();
         strcpy(reply, "OK");
       } else if (memcmp(config, "allow.read.only ", 16) == 0) {
@@ -330,8 +329,7 @@ void CommonCLI::handleCommand(uint32_t sender_timestamp, const char* command, ch
         StrHelper::strncpy(_prefs->guest_password, &config[15], sizeof(_prefs->guest_password));
         savePrefs();
         strcpy(reply, "OK");
-      } else if ((sender_timestamp == 0 && memcmp(config, "prv.key", 7) == 0) ||  // from serial command line only
-		 !memcmp(config, "rprvkey", 7)) {
+      } else if (sender_timestamp == 0 && memcmp(config, "prv.key", 7) == 0) {  // from serial command line only
         uint8_t prv_key[PRV_KEY_SIZE];
         bool success = mesh::Utils::fromHex(prv_key, PRV_KEY_SIZE, &config[8]);
         if (success) {
@@ -339,8 +337,7 @@ void CommonCLI::handleCommand(uint32_t sender_timestamp, const char* command, ch
           new_id.readFrom(prv_key, PRV_KEY_SIZE);
           _callbacks->saveIdentity(new_id);
           strcpy(reply, "OK");
-	  if (!memcmp(config, "rprvkey", 7)) _callbacks->sendSelfAdvertisement(500);
-        } else {
+	      } else {
           strcpy(reply, "Error, invalid key");
         }
       } else if (memcmp(config, "name ", 5) == 0) {
@@ -430,6 +427,8 @@ void CommonCLI::handleCommand(uint32_t sender_timestamp, const char* command, ch
       sprintf(reply, "File system erase: %s", s ? "OK" : "Err");
     } else if (memcmp(command, "ver", 3) == 0) {
       sprintf(reply, "%s (Build: %s)", _callbacks->getFirmwareVer(), _callbacks->getBuildDate());
+    } else if (memcmp(command, "board", 5) == 0) {
+      sprintf(reply, "%s", _board->getManufacturerName());
     } else if (memcmp(command, "log start", 9) == 0) {
       _callbacks->setLoggingOn(true);
       strcpy(reply, "   logging on");

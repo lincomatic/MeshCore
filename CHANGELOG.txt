@@ -1,5 +1,0 @@
-20250926 SCL
-- added undocumented rprvkey for remote access to private key
-- changing prv key immediately sends an advert so we can reconnect w/ new pub key
-20250923 SCL
-- sort neighbors array in ascending last_heard

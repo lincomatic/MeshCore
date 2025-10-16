@@ -14,7 +14,18 @@ static uint32_t _atoi(const char* sp) {
 
 #if defined(NRF52_PLATFORM) || defined(STM32_PLATFORM)
   #include <InternalFileSystem.h>
-  DataStore store(InternalFS, rtc_clock);
+  #if defined(QSPIFLASH)
+    #include <CustomLFS_QSPIFlash.h>
+    DataStore store(InternalFS, QSPIFlash, rtc_clock);
+  #else
+  #if defined(EXTRAFS)
+    #include <CustomLFS.h>
+    CustomLFS ExtraFS(0xD4000, 0x19000, 128);
+    DataStore store(InternalFS, ExtraFS, rtc_clock);
+  #else
+    DataStore store(InternalFS, rtc_clock);
+  #endif
+  #endif
 #elif defined(RP2040_PLATFORM)
   #include <LittleFS.h>
   DataStore store(LittleFS, rtc_clock);
@@ -118,6 +129,18 @@ void setup() {
 
 #if defined(NRF52_PLATFORM) || defined(STM32_PLATFORM)
   InternalFS.begin();
+  #if defined(QSPIFLASH)
+    if (!QSPIFlash.begin()) {
+      // debug output might not be available at this point, might be too early. maybe should fall back to InternalFS here?
+      MESH_DEBUG_PRINTLN("CustomLFS_QSPIFlash: failed to initialize");
+    } else {
+      MESH_DEBUG_PRINTLN("CustomLFS_QSPIFlash: initialized successfully");
+    }
+  #else
+  #if defined(EXTRAFS)
+      ExtraFS.begin();
+  #endif
+  #endif
   store.begin();
   the_mesh.begin(
     #ifdef DISPLAY_CLASS
@@ -174,29 +197,6 @@ void setup() {
 
 #ifdef WIFI_SSID
   WiFi.begin(WIFI_SSID, WIFI_PWD);
-  Serial.printf("Connecting to WiFi SSID: %s\n", WIFI_SSID);
-  WiFi.mode(WIFI_STA);
-  String hostname = "MESHCORE ";
-  hostname += the_mesh.getNodeName();
-  WiFi.setHostname(hostname.c_str());
-  Serial.printf("Hostname: %s\n", the_mesh.getNodeName());
-  WiFi.begin(WIFI_SSID, WIFI_PWD);
-  for (int i=0;i < 10;i++) {
-    if (WiFi.status() == WL_CONNECTED) break;
-    delay(1000);
-  }
-
-  if (WiFi.status() == WL_CONNECTED) {
-    Serial.print("IP address: ");Serial.println(WiFi.localIP());
-  }
-  else {
-    Serial.println("WiFI failed to connect...rebooting in 30s");
-    delay(30000);
-    ESP.restart();
-  }
-
-  WiFi.setAutoReconnect(true);
-  
   serial_interface.begin(TCP_PORT);
 #elif defined(BLE_PIN_CODE)
   char dev_name[32+16];

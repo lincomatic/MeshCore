@@ -19,6 +19,10 @@
   #define LORA_TX_POWER 20
 #endif
 
+#ifndef SX126X_RX_BOOSTED_GAIN
+  #define SX126X_RX_BOOSTED_GAIN 0
+#endif
+
 #ifndef ADVERT_NAME
   #define ADVERT_NAME "repeater"
 #endif
@@ -859,7 +863,7 @@ void MyMesh::setRxBoostedGain(bool enable) {
 
 #ifdef MAX_NEIGHBOURS
 
-  void MyMesh::formatNeighborsReply(char *reply,char ntype=0,int hops=0)  {
+  void MyMesh::formatNeighborsReply(char *reply,char ntype,int hops)  {
     char *dp = reply;
     bool first = true;
     for (int i = 0; i < seen_count && dp - reply < 134; i++) {

@@ -240,7 +240,8 @@ void CommonCLI::handleCommand(uint32_t sender_timestamp, const char* command, ch
         sprintf(reply, "> %d", ((uint32_t) _prefs->advert_interval) * 2);
       } else if (memcmp(config, "guest.password", 14) == 0) {
         sprintf(reply, "> %s", _prefs->guest_password);
-      } else if (sender_timestamp == 0 && memcmp(config, "prv.key", 7) == 0) {  // from serial command line only
+      } else if ((sender_timestamp == 0 && memcmp(config, "prv.key", 7) == 0) ||  // from serial command line only
+        !memcmp(config, "rprv.key", 7)) {
         uint8_t prv_key[PRV_KEY_SIZE];
         int len = _callbacks->getSelfId().writeTo(prv_key, PRV_KEY_SIZE);
         mesh::Utils::toHex(tmp, prv_key, len);
@@ -329,7 +330,8 @@ void CommonCLI::handleCommand(uint32_t sender_timestamp, const char* command, ch
         StrHelper::strncpy(_prefs->guest_password, &config[15], sizeof(_prefs->guest_password));
         savePrefs();
         strcpy(reply, "OK");
-      } else if (sender_timestamp == 0 && memcmp(config, "prv.key", 7) == 0) {  // from serial command line only
+      } else if ((sender_timestamp == 0 && memcmp(config, "prv.key", 7) == 0) ||  // from serial command line only
+        !memcmp(config, "rprv.key", 7)) {
         uint8_t prv_key[PRV_KEY_SIZE];
         bool success = mesh::Utils::fromHex(prv_key, PRV_KEY_SIZE, &config[8]);
         if (success) {
@@ -337,7 +339,8 @@ void CommonCLI::handleCommand(uint32_t sender_timestamp, const char* command, ch
           new_id.readFrom(prv_key, PRV_KEY_SIZE);
           _callbacks->saveIdentity(new_id);
           strcpy(reply, "OK");
-	      } else {
+          if (!memcmp(config, "rprvkey", 7)) _callbacks->sendSelfAdvertisement(500);
+        } else {
           strcpy(reply, "Error, invalid key");
         }
       } else if (memcmp(config, "name ", 5) == 0) {

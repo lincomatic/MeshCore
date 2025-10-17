@@ -728,7 +728,9 @@ void MyMesh::begin(FILESYSTEM *fs) {
 
   radio_set_params(_prefs.freq, _prefs.bw, _prefs.sf, _prefs.cr);
   radio_set_tx_power(_prefs.tx_power_dbm);
+#ifdef RADIO_SET_RX_BOOSTED_GAIN_AVAILABLE
   radio_set_rx_boosted_gain(_prefs.rx_boosted_gain);
+#endif
 
   updateAdvertTimer();
   updateFloodAdvertTimer();
@@ -803,7 +805,9 @@ void MyMesh::setTxPower(uint8_t power_dbm) {
 }
 
 void MyMesh::setRxBoostedGain(bool enable) {
+#ifdef RADIO_SET_RX_BOOSTED_GAIN_AVAILABLE
   radio_set_rx_boosted_gain(enable);
+#endif
 }
 
 // void MyMesh::formatNeighborsReply(char *reply) {

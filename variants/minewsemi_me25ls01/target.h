@@ -1,6 +1,7 @@
 #pragma once
 
 #define RADIOLIB_STATIC_ONLY 1
+#define RADIO_SET_RX_BOOSTED_GAIN_AVAILABLE
 #include <RadioLib.h>
 #include <helpers/radiolib/RadioLibWrappers.h>
 #include <MinewsemiME25LS01Board.h>

@@ -22,3 +22,4 @@ public:
   virtual bool handleInput(char c) { return false; }
   virtual void poll() { }
 };
+

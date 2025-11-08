@@ -114,29 +114,29 @@ void GxEPDDisplay::drawXbm(int x, int y, const uint8_t* bits, int w, int h) {
   // Calculate the base position in display coordinates
   uint16_t startX = x * scale_x;
   uint16_t startY = y * scale_y;
-
+  
   // Width in bytes for bitmap processing
   uint16_t widthInBytes = (w + 7) / 8;
-
+  
   // Process the bitmap row by row
   for (uint16_t by = 0; by < h; by++) {
     // Calculate the target y-coordinates for this logical row
     int y1 = startY + (int)(by * scale_y);
     int y2 = startY + (int)((by + 1) * scale_y);
     int block_h = y2 - y1;
-
+    
     // Scan across the row bit by bit
     for (uint16_t bx = 0; bx < w; bx++) {
       // Calculate the target x-coordinates for this logical column
       int x1 = startX + (int)(bx * scale_x);
       int x2 = startX + (int)((bx + 1) * scale_x);
       int block_w = x2 - x1;
-
+      
       // Get the current bit
       uint16_t byteOffset = (by * widthInBytes) + (bx / 8);
       uint8_t bitMask = 0x80 >> (bx & 7);
       bool bitSet = pgm_read_byte(bits + byteOffset) & bitMask;
-
+      
       // If the bit is set, draw a block of pixels
       if (bitSet) {
         // Draw the block as a filled rectangle

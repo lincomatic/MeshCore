@@ -38,20 +38,20 @@ bool radio_init() {
 
   radio.setRfSwitchTable(rfswitch_pins, rfswitch_table);
 
-  int status = radio.begin(LORA_FREQ, LORA_BW, LORA_SF, LORA_CR, RADIOLIB_SX126X_SYNC_WORD_PRIVATE, LORA_TX_POWER, 16, STM32WL_TCXO_VOLTAGE, 0);
+  int status = radio.begin(LORA_FREQ, LORA_BW, LORA_SF, LORA_CR, RADIOLIB_SX126X_SYNC_WORD_PRIVATE, LORA_TX_POWER, 16, STM32WL_TCXO_VOLTAGE, 0); 
 
   if (status != RADIOLIB_ERR_NONE) {
     Serial.print("ERROR: radio init failed: ");
     Serial.println(status);
     return false;  // fail
   }
-
+  
   #ifdef RX_BOOSTED_GAIN
     radio.setRxBoostedGainMode(RX_BOOSTED_GAIN);
   #endif
 
   radio.setCRC(1);
-
+  
   return true;  // success
 }
 
@@ -68,10 +68,6 @@ void radio_set_params(float freq, float bw, uint8_t sf, uint8_t cr) {
 
 void radio_set_tx_power(uint8_t dbm) {
   radio.setOutputPower(dbm);
-}
-
-void radio_set_rx_boosted_gain(bool enable) {
-  radio.setRxBoostedGainMode(enable);
 }
 
 mesh::LocalIdentity radio_new_identity() {

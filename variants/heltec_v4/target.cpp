@@ -31,7 +31,7 @@ AutoDiscoverRTCClock rtc_clock(fallback_clock);
 bool radio_init() {
   fallback_clock.begin();
   rtc_clock.begin(Wire);
-
+  
 #if defined(P_LORA_SCLK)
   return radio.std_init(&spi);
 #else

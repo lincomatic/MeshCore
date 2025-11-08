@@ -118,7 +118,7 @@ void SerialBLEInterface::onWrite(BLECharacteristic* pCharacteristic, esp_ble_gat
 
 // ---------- public methods
 
-void SerialBLEInterface::enable() {
+void SerialBLEInterface::enable() { 
   if (_isEnabled) return;
 
   _isEnabled = true;

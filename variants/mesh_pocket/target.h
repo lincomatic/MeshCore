@@ -30,3 +30,4 @@ void radio_set_tx_power(uint8_t dbm);
 mesh::LocalIdentity radio_new_identity();
 
 extern SensorManager sensors;
+

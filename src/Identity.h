@@ -16,7 +16,7 @@ public:
   Identity(const char* pub_hex);
   Identity(const uint8_t* _pub) { memcpy(pub_key, _pub, PUB_KEY_SIZE); }
 
-  int copyHashTo(uint8_t* dest) const {
+  int copyHashTo(uint8_t* dest) const { 
     memcpy(dest, pub_key, PATH_HASH_SIZE);    // hash is just prefix of pub_key
     return PATH_HASH_SIZE;
   }
@@ -81,3 +81,4 @@ public:
 };
 
 }
+

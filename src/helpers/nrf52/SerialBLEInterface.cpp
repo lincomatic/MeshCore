@@ -49,13 +49,13 @@ void SerialBLEInterface::begin(const char* device_name, uint32_t pin_code) {
   // Configure and start the BLE Uart service
   bleuart.setPermission(SECMODE_ENC_WITH_MITM, SECMODE_ENC_WITH_MITM);
   bleuart.begin();
-
+  
 }
 
 void SerialBLEInterface::startAdv() {
 
   BLE_DEBUG_PRINTLN("SerialBLEInterface: starting advertising");
-
+  
   // clean restart if already advertising
   if(Bluefruit.Advertising.isRunning()){
     BLE_DEBUG_PRINTLN("SerialBLEInterface: already advertising, stopping to allow clean restart");
@@ -64,11 +64,11 @@ void SerialBLEInterface::startAdv() {
 
   Bluefruit.Advertising.clearData(); // clear advertising data
   Bluefruit.ScanResponse.clearData(); // clear scan response data
-
+  
   // Advertising packet
   Bluefruit.Advertising.addFlags(BLE_GAP_ADV_FLAGS_LE_ONLY_GENERAL_DISC_MODE);
   Bluefruit.Advertising.addTxPower();
-
+  
   // Include the BLE UART (AKA 'NUS') 128-bit UUID
   Bluefruit.Advertising.addService(bleuart);
 
@@ -81,9 +81,9 @@ void SerialBLEInterface::startAdv() {
    * - Interval:  fast mode = 20 ms, slow mode = 152.5 ms
    * - Timeout for fast mode is 30 seconds
    * - Start(timeout) with timeout = 0 will advertise forever (until connected)
-   *
+   * 
    * For recommended advertising interval
-   * https://developer.apple.com/library/content/qa/qa1931/_index.html
+   * https://developer.apple.com/library/content/qa/qa1931/_index.html   
    */
   Bluefruit.Advertising.restartOnDisconnect(false); // don't restart automatically as we handle it in onDisconnect
   Bluefruit.Advertising.setInterval(32, 244);
@@ -95,7 +95,7 @@ void SerialBLEInterface::startAdv() {
 void SerialBLEInterface::stopAdv() {
 
   BLE_DEBUG_PRINTLN("SerialBLEInterface: stopping advertising");
-
+  
   // we only want to stop advertising if it's running, otherwise an invalid state error is logged by ble stack
   if(!Bluefruit.Advertising.isRunning()){
     return;
@@ -108,7 +108,7 @@ void SerialBLEInterface::stopAdv() {
 
 // ---------- public methods
 
-void SerialBLEInterface::enable() {
+void SerialBLEInterface::enable() { 
   if (_isEnabled) return;
 
   _isEnabled = true;

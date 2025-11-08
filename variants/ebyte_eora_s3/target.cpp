@@ -28,7 +28,7 @@ SensorManager sensors;
 bool radio_init() {
   fallback_clock.begin();
   rtc_clock.begin(Wire);
-
+  
 #ifdef SX126X_DIO3_TCXO_VOLTAGE
   float tcxo = SX126X_DIO3_TCXO_VOLTAGE;
 #else
@@ -44,9 +44,9 @@ bool radio_init() {
     Serial.println(status);
     return false;  // fail
   }
-
+  
   radio.setCRC(1);
-
+  
 #if defined(SX126X_RXEN) && defined(SX126X_TXEN)
   radio.setRfSwitchPins(SX126X_RXEN, SX126X_TXEN);
 #endif
@@ -77,10 +77,6 @@ void radio_set_params(float freq, float bw, uint8_t sf, uint8_t cr) {
 
 void radio_set_tx_power(uint8_t dbm) {
   radio.setOutputPower(dbm);
-}
-
-void radio_set_rx_boosted_gain(bool enable) {
-  radio.setRxBoostedGainMode(enable);
 }
 
 mesh::LocalIdentity radio_new_identity() {

@@ -32,7 +32,16 @@ public:
     setCursor(mid_x - w/2, y);
     print(str);
   }
-
+  virtual void drawTextRightAlign(int x_anch, int y, const char* str) {
+    int w = getTextWidth(str);
+    setCursor(x_anch - w, y);
+    print(str);
+  }
+  virtual void drawTextLeftAlign(int x_anch, int y, const char* str) {
+    setCursor(x_anch, y);
+    print(str);
+  }
+  
   // convert UTF-8 characters to displayable block characters for compatibility
   virtual void translateUTF8ToBlocks(char* dest, const char* src, size_t dest_size) {
     size_t j = 0;
@@ -42,13 +51,13 @@ public:
         dest[j++] = c;  // ASCII printable
       } else if (c >= 0x80) {
         dest[j++] = '\xDB';  // CP437 full block █
-        while (src[i+1] && (src[i+1] & 0xC0) == 0x80)
+        while (src[i+1] && (src[i+1] & 0xC0) == 0x80) 
           i++;  // skip UTF-8 continuation bytes
       }
     }
     dest[j] = 0;
   }
-
+  
   // draw text with ellipsis if it exceeds max_width
   virtual void drawTextEllipsized(int x, int y, int max_width, const char* str) {
     char temp_str[256];  // reasonable buffer size
@@ -56,13 +65,13 @@ public:
     if (len >= sizeof(temp_str)) len = sizeof(temp_str) - 1;
     memcpy(temp_str, str, len);
     temp_str[len] = 0;
-
+    
     if (getTextWidth(temp_str) <= max_width) {
       setCursor(x, y);
       print(temp_str);
       return;
     }
-
+    
     // for variable-width fonts (GxEPD), add space after ellipsis
     // for fixed-width fonts (OLED), keep tight spacing to save precious characters
     const char* ellipsis;
@@ -74,18 +83,18 @@ public:
     } else {
       ellipsis = "...";   // fixed-width fonts: no space
     }
-
+    
     int ellipsis_width = getTextWidth(ellipsis);
     int str_len = strlen(temp_str);
-
+    
     while (str_len > 0 && getTextWidth(temp_str) > max_width - ellipsis_width) {
       temp_str[--str_len] = 0;
     }
     strcat(temp_str, ellipsis);
-
+    
     setCursor(x, y);
     print(temp_str);
   }
-
+  
   virtual void endFrame() = 0;
 };

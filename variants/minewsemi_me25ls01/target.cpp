@@ -30,26 +30,26 @@ static const uint32_t rfswitch_dios[Module::RFSWITCH_MAX_PINS] = {
   RADIOLIB_LR11X0_DIO5,
   RADIOLIB_LR11X0_DIO6,
   RADIOLIB_LR11X0_DIO7,
-  RADIOLIB_LR11X0_DIO8,
+  RADIOLIB_LR11X0_DIO8, 
   RADIOLIB_NC
 };
 
 static const Module::RfSwitchMode_t rfswitch_table[] = {
   // mode                 DIO5  DIO6  DIO7  DIO8
-  { LR11x0::MODE_STBY,   {LOW,  LOW,  LOW,  LOW  }},
+  { LR11x0::MODE_STBY,   {LOW,  LOW,  LOW,  LOW  }},  
   { LR11x0::MODE_RX,     {HIGH, LOW,  LOW,  HIGH }},
   { LR11x0::MODE_TX,     {HIGH, HIGH, LOW,  HIGH }},
   { LR11x0::MODE_TX_HP,  {LOW,  HIGH, LOW,  HIGH }},
-  { LR11x0::MODE_TX_HF,  {LOW,  LOW,  LOW,  LOW  }},
+  { LR11x0::MODE_TX_HF,  {LOW,  LOW,  LOW,  LOW  }}, 
   { LR11x0::MODE_GNSS,   {LOW,  LOW,  HIGH, LOW  }},
-  { LR11x0::MODE_WIFI,   {LOW,  LOW,  LOW,  LOW  }},
+  { LR11x0::MODE_WIFI,   {LOW,  LOW,  LOW,  LOW  }},  
   END_OF_MODE_TABLE,
 };
 #endif
 
 bool radio_init() {
   //rtc_clock.begin(Wire);
-
+  
 #ifdef LR11X0_DIO3_TCXO_VOLTAGE
   float tcxo = LR11X0_DIO3_TCXO_VOLTAGE;
 #else
@@ -64,7 +64,7 @@ bool radio_init() {
     Serial.println(status);
     return false;  // fail
   }
-
+  
   radio.setCRC(1);
 
 #ifdef RF_SWITCH_TABLE
@@ -90,10 +90,6 @@ void radio_set_params(float freq, float bw, uint8_t sf, uint8_t cr) {
 
 void radio_set_tx_power(uint8_t dbm) {
   radio.setOutputPower(dbm);
-}
-
-void radio_set_rx_boosted_gain(bool enable) {
-  radio.setRxBoostedGainMode(enable);
 }
 
 mesh::LocalIdentity radio_new_identity() {

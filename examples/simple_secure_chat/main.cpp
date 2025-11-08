@@ -222,7 +222,7 @@ protected:
       Serial.printf("   Got ACK! (round trip: %d millis)\n", _ms->getMillis() - last_msg_sent);
       // NOTE: the same ACK can be received multiple times!
       expected_ack_crc = 0;  // reset our expected hash, now that we have received ACK
-      return NULL;  // TODO: really should return ContactInfo pointer
+      return NULL;  // TODO: really should return ContactInfo pointer 
     }
 
     //uint32_t crc;
@@ -266,7 +266,7 @@ protected:
     return SEND_TIMEOUT_BASE_MILLIS + (FLOOD_SEND_TIMEOUT_FACTOR * pkt_airtime_millis);
   }
   uint32_t calcDirectTimeoutMillisFor(uint32_t pkt_airtime_millis, uint8_t path_len) const override {
-    return SEND_TIMEOUT_BASE_MILLIS +
+    return SEND_TIMEOUT_BASE_MILLIS + 
          ( (pkt_airtime_millis*DIRECT_SEND_PERHOP_FACTOR + DIRECT_SEND_PERHOP_EXTRA_MILLIS) * (path_len + 1));
   }
 
@@ -527,7 +527,7 @@ public:
     int len = strlen(command);
     while (Serial.available() && len < sizeof(command)-1) {
       char c = Serial.read();
-      if (c != '\n') {
+      if (c != '\n') { 
         command[len++] = c;
         command[len] = 0;
       }
@@ -548,7 +548,7 @@ public:
 
 StdRNG fast_rng;
 SimpleMeshTables tables;
-MyMesh the_mesh(radio_driver, fast_rng, *new VolatileRTCClock(), tables); // TODO: test with 'rtc_clock' in target.cpp
+MyMesh the_mesh(radio_driver, fast_rng, rtc_clock, tables);
 
 void halt() {
   while (1) ;
@@ -587,4 +587,5 @@ void setup() {
 
 void loop() {
   the_mesh.loop();
+  rtc_clock.tick();
 }

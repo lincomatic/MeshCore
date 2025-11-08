@@ -40,13 +40,13 @@ bool radio_init() {
     Serial.println(status);
     return false;  // fail
   }
-
+    
   #ifdef RX_BOOSTED_GAIN
     radio.setRxBoostedGainMode(RX_BOOSTED_GAIN);
   #endif
-
+ 
   radio.setCRC(1);
-
+  
   return true;  // success
 }
 
@@ -65,16 +65,12 @@ void radio_set_tx_power(uint8_t dbm) {
   radio.setOutputPower(dbm);
 }
 
-void radio_set_rx_boosted_gain(bool enable) {
-  radio.setRxBoostedGainMode(enable);
-}
-
 mesh::LocalIdentity radio_new_identity() {
   RadioNoiseListener rng(radio);
   return mesh::LocalIdentity(&rng);  // create new random identity
 }
 
-bool WIOE5SensorManager::querySensors(uint8_t requester_permissions, CayenneLPP& telemetry) {
+bool WIOE5SensorManager::querySensors(uint8_t requester_permissions, CayenneLPP& telemetry) { 
   if (!has_bme) return false;
 
   float temp(NAN), hum(NAN), pres(NAN);
@@ -88,7 +84,7 @@ bool WIOE5SensorManager::querySensors(uint8_t requester_permissions, CayenneLPP&
   telemetry.addRelativeHumidity(TELEM_CHANNEL_SELF, hum);
   telemetry.addBarometricPressure(TELEM_CHANNEL_SELF, pres);
 
-  return true;
+  return true; 
 }
 
 bool WIOE5SensorManager::begin() {

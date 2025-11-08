@@ -20,6 +20,8 @@ protected:
   bool MLX90614_initialized = false;
   bool VL53L0X_initialized = false;
   bool SHT4X_initialized = false;
+  bool BME680_initialized = false;
+  bool BMP085_initialized = false;
 
   bool gps_detected = false;
   bool gps_active = false;
@@ -39,14 +41,13 @@ protected:
 public:
   #if ENV_INCLUDE_GPS
   EnvironmentSensorManager(LocationProvider &location): _location(&location){};
+  LocationProvider* getLocationProvider() { return _location; }
   #else
   EnvironmentSensorManager(){};
   #endif
   bool begin() override;
   bool querySensors(uint8_t requester_permissions, CayenneLPP& telemetry) override;
-  #if ENV_INCLUDE_GPS
   void loop() override;
-  #endif
   int getNumSettings() const override;
   const char* getSettingName(int i) const override;
   const char* getSettingValue(int i) const override;

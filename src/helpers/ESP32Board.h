@@ -107,7 +107,7 @@ public:
     time(&_now);
     return _now;
   }
-  void setCurrentTime(uint32_t time) override { 
+  void setCurrentTime(uint32_t time) override {
     struct timeval tv;
     tv.tv_sec = time;
     tv.tv_usec = 0;

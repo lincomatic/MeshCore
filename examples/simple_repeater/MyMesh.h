@@ -2,7 +2,8 @@
 
 #include <Arduino.h>
 #include <Mesh.h>
-#include <helpers/CommonCLI.h>
+#include <RTClib.h>
+#include <target.h>
 
 #if defined(NRF52_PLATFORM) || defined(STM32_PLATFORM)
   #include <InternalFileSystem.h>
@@ -11,16 +12,6 @@
 #elif defined(ESP32)
   #include <SPIFFS.h>
 #endif
-
-#include <helpers/ArduinoHelpers.h>
-#include <helpers/StaticPoolPacketManager.h>
-#include <helpers/SimpleMeshTables.h>
-#include <helpers/IdentityStore.h>
-#include <helpers/AdvertDataHelpers.h>
-#include <helpers/TxtDataHelpers.h>
-#include <helpers/ClientACL.h>
-#include <RTClib.h>
-#include <target.h>
 
 #ifdef WITH_RS232_BRIDGE
 #include "helpers/bridges/RS232Bridge.h"
@@ -31,6 +22,18 @@
 #include "helpers/bridges/ESPNowBridge.h"
 #define WITH_BRIDGE
 #endif
+
+#include <helpers/AdvertDataHelpers.h>
+#include <helpers/ArduinoHelpers.h>
+#include <helpers/ClientACL.h>
+#include <helpers/CommonCLI.h>
+#include <helpers/IdentityStore.h>
+#include <helpers/SimpleMeshTables.h>
+#include <helpers/StaticPoolPacketManager.h>
+#include <helpers/StatsFormatHelper.h>
+#include <helpers/TxtDataHelpers.h>
+#include <helpers/RegionMap.h>
+#include "RateLimiter.h"
 
 #ifdef WITH_BRIDGE
 extern AbstractBridge* bridge;
@@ -53,16 +56,8 @@ struct RepeaterStats {
   uint32_t total_rx_air_time_secs;
 };
 
-#define NOISE_FLOOR_INTERVAL (15*60000) // 15min
-#define NOISE_FLOOR_COUNT 96 // 24hrs @ 15min intervals
-
 #ifndef MAX_CLIENTS
   #define MAX_CLIENTS           32
-#endif
-
-#define MAX_NEIGHBOURS 32
-#ifndef MAX_NEIGHBOURS
-  #define MAX_NEIGHBOURS 16
 #endif
 
 struct NeighbourInfo {
@@ -70,9 +65,6 @@ struct NeighbourInfo {
   uint32_t advert_timestamp;
   uint32_t heard_timestamp;
   int8_t snr; // multiplied by 4, user should divide to get float value
-  int8_t rssi;
-  int8_t type;
-  int8_t hops;
 };
 
 #ifndef FIRMWARE_BUILD_DATE
@@ -80,31 +72,53 @@ struct NeighbourInfo {
 #endif
 
 #ifndef FIRMWARE_VERSION
-  #define FIRMWARE_VERSION   "v1.9.1-cc9"
+  #define FIRMWARE_VERSION   "v1.9.1"
 #endif
 
 #define FIRMWARE_ROLE "repeater"
 
 #define PACKET_LOG_FILE  "/packet_log"
 
+#ifndef NOISE_FLOOR_INTERVAL
+  #define NOISE_FLOOR_INTERVAL  900000  // 15 minutes in milliseconds
+#endif
+
+#ifndef NOISE_FLOOR_COUNT
+  #define NOISE_FLOOR_COUNT  96  // 24 hours worth at 15 min intervals
+#endif
+
+#ifndef MAX_SEEN_ADVERTS
+  #define MAX_SEEN_ADVERTS  100
+#endif
+
+struct SeenAdvertInfo {
+  mesh::Identity id;
+  uint32_t advert_timestamp;
+  uint8_t path_len;  // hops
+  int8_t snr;        // multiplied by 4
+  int16_t rssi;
+  uint8_t type;      // ADV_TYPE_*
+};
+
 class MyMesh : public mesh::Mesh, public CommonCLICallbacks {
   FILESYSTEM* _fs;
+  uint32_t last_millis;
+  uint64_t uptime_millis;
   unsigned long next_local_advert, next_flood_advert;
   bool _logging;
   NodePrefs _prefs;
   CommonCLI _cli;
   uint8_t reply_data[MAX_PACKET_PAYLOAD];
   ClientACL  acl;
+  TransportKeyStore key_store;
+  RegionMap region_map, temp_map;
+  RegionEntry* load_stack[8];
+  RegionEntry* recv_pkt_region;
+  RateLimiter discover_limiter;
+  bool region_load_active;
   unsigned long dirty_contacts_expiry;
 #if MAX_NEIGHBOURS
   NeighbourInfo neighbours[MAX_NEIGHBOURS];
-  int seen_count;
-#endif
-#if NOISE_FLOOR_INTERVAL
-  int8_t noise_floor_log[NOISE_FLOOR_COUNT];
-  int noise_floor_count;
-  unsigned long next_noise_floor_log;
-  int16_t min_noise_floor=1000,max_noise_floor=-1000;
 #endif
   CayenneLPP telemetry;
   unsigned long set_radio_at, revert_radio_at;
@@ -118,8 +132,21 @@ class MyMesh : public mesh::Mesh, public CommonCLICallbacks {
 #elif defined(WITH_ESPNOW_BRIDGE)
   ESPNowBridge bridge;
 #endif
+#if NOISE_FLOOR_INTERVAL
+  int8_t noise_floor_log[NOISE_FLOOR_COUNT];
+  int noise_floor_count;
+  int16_t min_noise_floor;
+  int16_t max_noise_floor;
+  unsigned long next_noise_floor_log;
+#endif
+  SeenAdvertInfo seen_adverts[MAX_SEEN_ADVERTS];
+  int seen_adverts_count;
 
   void putNeighbour(const mesh::Identity& id, uint32_t timestamp, float snr);
+  void putSeenAdvert(const mesh::Identity& id, uint32_t timestamp, uint8_t path_len, float snr, int16_t rssi, uint8_t type);
+#if NOISE_FLOOR_INTERVAL
+  void LogNoiseFloor();
+#endif
   uint8_t handleLoginReq(const mesh::Identity& sender, const uint8_t* secret, uint32_t sender_timestamp, const uint8_t* data);
   int handleRequest(ClientInfo* sender, uint32_t sender_timestamp, uint8_t* payload, size_t payload_len);
   mesh::Packet* createSelfAdvert();
@@ -153,12 +180,21 @@ protected:
     return _prefs.multi_acks;
   }
 
+#if ENV_INCLUDE_GPS == 1
+  void applyGpsPrefs() {
+    sensors.setSettingByKey("gps", _prefs.gps_enabled?"1":"0");
+  }
+#endif
+
+  bool filterRecvFloodPacket(mesh::Packet* pkt) override;
+
   void onAnonDataRecv(mesh::Packet* packet, const uint8_t* secret, const mesh::Identity& sender, uint8_t* data, size_t len) override;
   int searchPeersByHash(const uint8_t* hash) override;
   void getPeerSharedSecret(uint8_t* dest_secret, int peer_idx) override;
   void onAdvertRecv(mesh::Packet* packet, const mesh::Identity& id, uint32_t timestamp, const uint8_t* app_data, size_t app_data_len);
   void onPeerDataRecv(mesh::Packet* packet, uint8_t type, int sender_idx, const uint8_t* secret, uint8_t* data, size_t len) override;
   bool onPeerPathRecv(mesh::Packet* packet, int sender_idx, const uint8_t* secret, uint8_t* path, uint8_t path_len, uint8_t extra_type, uint8_t* extra, uint8_t extra_len) override;
+  void onControlDataRecv(mesh::Packet* packet) override;
 
 public:
   MyMesh(mesh::MainBoard& board, mesh::Radio& radio, mesh::MillisecondClock& ms, mesh::RNG& rng, mesh::RTCClock& rtc, mesh::MeshTables& tables);
@@ -191,18 +227,13 @@ public:
 
   void dumpLogFile() override;
   void setTxPower(uint8_t power_dbm) override;
-  void setRxBoostedGain(bool enable) override;
   void formatNeighborsReply(char *reply) override;
   void removeNeighbor(const uint8_t* pubkey, int key_len) override;
-
-  static int compareNeighbour(const void *a, const void *b);
-  void putNeighbour(const mesh::Identity& id, float snr, float rssi, uint8_t type, int8_t hops);
-
-  void LogNoiseFloor();
-  void formatNoiseFloorReply(char *reply,int start_index) override;
-
-  void formatNeighborsReply(char *reply, char ntype=0, int hops=0);
   void formatSeenReply(char *reply, char type, int hops) override;
+  void formatNoiseFloorReply(char *reply, int start_index) override;
+  void formatStatsReply(char *reply) override;
+  void formatRadioStatsReply(char *reply) override;
+  void formatPacketStatsReply(char *reply) override;
 
   mesh::LocalIdentity& getSelfId() override { return self_id; }
 
@@ -210,4 +241,24 @@ public:
   void clearStats() override;
   void handleCommand(uint32_t sender_timestamp, char* command, char* reply);
   void loop();
+
+#if defined(WITH_BRIDGE)
+  void setBridgeState(bool enable) override {
+    if (enable == bridge.isRunning()) return;
+    if (enable)
+    {
+      bridge.begin();
+    }
+    else
+    {
+      bridge.end();
+    }
+  }
+
+  void restartBridge() override {
+    if (!bridge.isRunning()) return;
+    bridge.end();
+    bridge.begin();
+  }
+#endif
 };

@@ -1,23 +1,23 @@
 #pragma once
 
 #include <Arduino.h>
+#include <helpers/ESP32Board.h>
+#include <driver/rtc_io.h>
 
-// LoRa radio module pins for Station G2
-#define  P_LORA_DIO_1   48
-#define  P_LORA_NSS     11
-#define  P_LORA_RESET   21
-#define  P_LORA_BUSY    47
-#define  P_LORA_SCLK    12
-#define  P_LORA_MISO    14
-#define  P_LORA_MOSI    13
+// // LoRa radio module pins for Station G2
+// #define  P_LORA_DIO_1   48
+// #define  P_LORA_NSS     11
+// #define  P_LORA_RESET   21
+// #define  P_LORA_BUSY    47
+// #define  P_LORA_SCLK    12
+// #define  P_LORA_MISO    14
+// #define  P_LORA_MOSI    13
 
 // built-ins
 //#define  PIN_LED_BUILTIN 35
 //#define  PIN_VEXT_EN     36
 
-#include "ESP32Board.h"
-
-#include <driver/rtc_io.h>
+// #include "ESP32Board.h"
 
 class StationG2Board : public ESP32Board {
 public:
@@ -60,7 +60,17 @@ public:
   }
 
   uint16_t getBattMilliVolts() override {
-    return 0;
+    // Use INA219 voltage reading for battery monitoring
+    // This will be populated by the EnvironmentSensorManager
+    return battery_millivolts;
+  }
+
+protected:
+  uint16_t battery_millivolts = 0;
+
+public:
+  void setBatteryVoltage(uint16_t millivolts) {
+    battery_millivolts = millivolts;
   }
 
   const char* getManufacturerName() const override {

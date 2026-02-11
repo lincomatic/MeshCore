@@ -444,3 +444,24 @@ void UITask::handleButtonLongPress() {
     shutdown();
   }
 }
+
+#if CRISPR_HAS_BUZZER == 1
+  bool UITask::crisprSound(int mode) {
+    if (mode == -1) {
+      return !buzzer.isQuiet();
+    } else {
+      if (mode == 1) {
+        buzzer.quiet(false);
+        notify(UIEventType::ack);
+        sprintf(_alert, "Buzzer: ON");
+      } else {
+        buzzer.quiet(true);
+        sprintf(_alert, "Buzzer: OFF");
+      }
+      _node_prefs->buzzer_quiet = buzzer.isQuiet();
+      the_mesh.savePrefs();
+      _need_refresh = true;
+      return !buzzer.isQuiet();
+    }
+  }
+#endif // CRISPR_HAS_BUZZER

@@ -3,6 +3,7 @@
 #include <Arduino.h>
 #include <Mesh.h>
 #include "AbstractUITask.h"
+#include "Crispr.h"
 
 /*------------ Frame Protocol --------------*/
 #define FIRMWARE_VER_CODE 8
@@ -102,7 +103,17 @@ public:
 
   int  getRecentlyHeard(AdvertPath dest[], int max_num);
 
+#if CRISPR == 1
+  bool crisprGps(int mode=-1);
+  int crisprGpsInterval(int sec=-1);
+#endif // CRISPR
 protected:
+#if CRISPR == 1
+  Crispr the_crispr;
+  bool allowPacketForward(const mesh::Packet* packet) override {
+    return the_crispr._repeat; 
+  }
+#endif // CRISPR
   float getAirtimeBudgetFactor() const override;
   int getInterferenceThreshold() const override;
   int calcRxDelay(float score, uint32_t air_time) const override;

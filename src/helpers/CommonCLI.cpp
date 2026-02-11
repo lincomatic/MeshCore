@@ -276,6 +276,10 @@ void CommonCLI::handleCommand(uint32_t sender_timestamp, const char* command, ch
       const char* config = &command[4];
       if (memcmp(config, "af", 2) == 0) {
         sprintf(reply, "> %s", StrHelper::ftoa(_prefs->airtime_factor));
+#ifdef USER_GPIO_PIN_0
+      } else if (memcmp(config, "gpio", 4) == 0) {
+        sprintf(reply, "> %s", digitalRead(USER_GPIO_PIN_0) ? "on" : "off");
+#endif
       } else if (memcmp(config, "int.thresh", 10) == 0) {
         sprintf(reply, "> %d", (uint32_t) _prefs->interference_threshold);
       } else if (memcmp(config, "agc.reset.interval", 18) == 0) {
@@ -408,6 +412,13 @@ void CommonCLI::handleCommand(uint32_t sender_timestamp, const char* command, ch
         _prefs->airtime_factor = atof(&config[3]);
         savePrefs();
         strcpy(reply, "OK");
+#ifdef USER_GPIO_PIN_0
+      } else if (memcmp(config, "gpio ", 5) == 0) {
+	      int seton = !memcmp(&config[5],"on",2);
+          pinMode(USER_GPIO_PIN_0, OUTPUT);
+	      digitalWrite(USER_GPIO_PIN_0, seton ? HIGH : LOW);
+        sprintf(reply, "OK - set %s", digitalRead(USER_GPIO_PIN_0) ? "on" : "off");
+#endif
       } else if (memcmp(config, "int.thresh ", 11) == 0) {
         _prefs->interference_threshold = atoi(&config[11]);
         savePrefs();
@@ -577,14 +588,14 @@ void CommonCLI::handleCommand(uint32_t sender_timestamp, const char* command, ch
 #ifdef WITH_RS232_BRIDGE
       } else if (memcmp(config, "bridge.baud ", 12) == 0) {
         uint32_t baud = atoi(&config[12]);
-        if (baud >= 9600 && baud <= 115200) {
+        if (baud >= 9600 && baud <= 500000) {
           _prefs->bridge_baud = (uint32_t)baud;
           _callbacks->restartBridge();
           savePrefs();
           strcpy(reply, "OK");
-        } else {
-          strcpy(reply, "Error: baud rate must be between 9600-115200");
-        }
+	      } else {
+	        strcpy(reply, "Error: baud rate must be between 9600-500000");
+}
 #endif
 #ifdef WITH_ESPNOW_BRIDGE
       } else if (memcmp(config, "bridge.channel ", 15) == 0) {

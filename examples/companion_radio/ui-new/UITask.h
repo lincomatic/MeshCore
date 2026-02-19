@@ -90,4 +90,8 @@ public:
   void loop() override;
 
   void shutdown(bool restart = false);
+
+#if CRISPR == 1
+  SensorManager *crisprGetSensors() { return _sensors; }
+#endif
 };

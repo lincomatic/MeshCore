@@ -388,7 +388,11 @@ File MyMesh::openAppend(const char *fname) {
 }
 
 bool MyMesh::allowPacketForward(const mesh::Packet *packet) {
+#if CRISPR == 1
+  if (!the_crispr._repeat) return false;
+#else
   if (_prefs.disable_fwd) return false;
+#endif // CRISPR
   if (packet->isRouteFlood() && packet->path_len >= _prefs.flood_max) return false;
   if (packet->isRouteFlood() && recv_pkt_region == NULL) {
     MESH_DEBUG_PRINTLN("allowPacketForward: unknown transport code, or wildcard not allowed for FLOOD packet");

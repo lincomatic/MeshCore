@@ -113,6 +113,8 @@ protected:
   bool allowPacketForward(const mesh::Packet* packet) override {
     return the_crispr._repeat; 
   }
+#else
+  bool allowPacketForward(const mesh::Packet* packet) override;
 #endif // CRISPR
   float getAirtimeBudgetFactor() const override;
   int getInterferenceThreshold() const override;
@@ -121,7 +123,6 @@ protected:
   uint32_t getDirectRetransmitDelay(const mesh::Packet *packet) override;
   uint8_t getExtraAckTransmitCount() const override;
   bool filterRecvFloodPacket(mesh::Packet* packet) override;
-  bool allowPacketForward(const mesh::Packet* packet) override;
 
   void sendFloodScoped(const ContactInfo& recipient, mesh::Packet* pkt, uint32_t delay_millis=0) override;
   void sendFloodScoped(const mesh::GroupChannel& channel, mesh::Packet* pkt, uint32_t delay_millis=0) override;

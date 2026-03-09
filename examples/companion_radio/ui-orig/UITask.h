@@ -70,4 +70,11 @@ public:
   void loop() override;
 
   void shutdown(bool restart = false);
+
+#if CRISPR_HAS_BUZZER == 1
+  bool crisprSound(int mode=-1);
+#endif
+#if CRISPR == 1
+  SensorManager *crisprGetSensors() { return _sensors; }
+#endif
 };

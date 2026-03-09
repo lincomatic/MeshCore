@@ -1,9 +1,9 @@
-#ifdef XIAO_NRF52
+#ifdef SOLARXIAO
 
 #include <Arduino.h>
 #include <Wire.h>
 
-#include "XiaoNrf52Board.h"
+#include "SolarXiaoBoard.h"
 
 #ifdef NRF52_POWER_MANAGEMENT
 // Static configuration for power management
@@ -14,7 +14,7 @@ const PowerMgtConfig power_config = {
   .voltage_bootlock = PWRMGT_VOLTAGE_BOOTLOCK
 };
 
-void XiaoNrf52Board::initiateShutdown(uint8_t reason) {
+void SolarXiaoBoard::initiateShutdown(uint8_t reason) {
   bool enable_lpcomp = (reason == SHUTDOWN_REASON_LOW_VOLTAGE ||
                         reason == SHUTDOWN_REASON_BOOT_PROTECT);
 
@@ -29,7 +29,7 @@ void XiaoNrf52Board::initiateShutdown(uint8_t reason) {
 }
 #endif // NRF52_POWER_MANAGEMENT
 
-void XiaoNrf52Board::begin() {
+void SolarXiaoBoard::begin() {
   NRF52BoardDCDC::begin();
 
   // Configure battery voltage ADC
@@ -60,16 +60,10 @@ void XiaoNrf52Board::begin() {
   checkBootVoltage(&power_config);
 #endif
 
-
-#ifdef USER_GPIO_PIN_0
-  pinMode(USER_GPIO_PIN_0, OUTPUT);
-  digitalWrite(USER_GPIO_PIN_0, LOW);
-#endif
-
   delay(10);  // Give sx1262 some time to power up
 }
 
-uint16_t XiaoNrf52Board::getBattMilliVolts() {
+uint16_t SolarXiaoBoard::getBattMilliVolts() {
   // https://wiki.seeedstudio.com/XIAO_BLE#q3-what-are-the-considerations-when-using-xiao-nrf52840-sense-for-battery-charging
   // VBAT_ENABLE must be LOW to read battery voltage
   digitalWrite(VBAT_ENABLE, LOW);

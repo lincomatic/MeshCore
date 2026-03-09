@@ -3,10 +3,10 @@
 #include "MyMesh.h"
 #include "Crispr.h"
 
-//#if CRISPR_HAS_BUZZER == 1
+#if CRISPR_HAS_BUZZER == 1
   #include "UITask.h"
   extern UITask ui_task;
-//#endif
+#endif
 
 const char *Crispr::processCmd(const char *cmdstr) {
   bool ok = false;

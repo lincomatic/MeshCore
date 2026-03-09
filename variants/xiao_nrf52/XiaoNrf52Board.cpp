@@ -60,12 +60,6 @@ void XiaoNrf52Board::begin() {
   checkBootVoltage(&power_config);
 #endif
 
-
-#ifdef USER_GPIO_PIN_0
-  pinMode(USER_GPIO_PIN_0, OUTPUT);
-  digitalWrite(USER_GPIO_PIN_0, LOW);
-#endif
-
   delay(10);  // Give sx1262 some time to power up
 }
 

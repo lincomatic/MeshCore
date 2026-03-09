@@ -60,13 +60,12 @@ size_t SerialWifiInterface::checkRecvFrame(uint8_t dest[]) {
     // disconnect existing client
     deviceConnected = false;
     client.stop();
-
+    // forget any partially received frame and queued writes
+    resetReceivedFrameHeader();
+    clearBuffers();
+    
     // switch active connection to new client
     client = newClient;
-
-    // forget received frame header
-    resetReceivedFrameHeader();
-    
   }
 
   if (client.connected()) {
@@ -79,6 +78,12 @@ size_t SerialWifiInterface::checkRecvFrame(uint8_t dest[]) {
       deviceConnected = false;
       WIFI_DEBUG_PRINTLN("Disconnected");
     }
+
+    // Ensure we fully close any dead/idle client and reset internal state
+    // so a reconnect doesn't reuse stale buffers/sockets.
+    client.stop();
+    clearBuffers();
+    resetReceivedFrameHeader();
   }
 
   if (deviceConnected) {

@@ -478,9 +478,11 @@ bool MyMesh::filterRecvFloodPacket(mesh::Packet* packet) {
   return false;
 }
 
+#if CRISPR != 1
 bool MyMesh::allowPacketForward(const mesh::Packet* packet) {
   return _prefs.client_repeat != 0;
 }
+#endif
 
 void MyMesh::sendFloodScoped(const TransportKey& scope, mesh::Packet* pkt, uint32_t delay_millis) {
   if (scope.isNull()) {
@@ -845,6 +847,9 @@ void MyMesh::onSendTimeout() {}
 
 MyMesh::MyMesh(mesh::Radio &radio, mesh::RNG &rng, mesh::RTCClock &rtc, SimpleMeshTables &tables, DataStore& store, AbstractUITask* ui)
     : BaseChatMesh(radio, *new ArduinoMillis(), rng, rtc, *new StaticPoolPacketManager(16), tables),
+#if CRISPR == 1
+      the_crispr(radio),
+#endif
       _serial(NULL), telemetry(MAX_PACKET_PAYLOAD - 4), _store(&store), _ui(ui) {
   _iter_started = false;
   _cli_rescue = false;
@@ -1114,6 +1119,21 @@ void MyMesh::handleCmdFrame(size_t len) {
     } else {
       ChannelDetails channel;
       bool success = getChannel(channel_idx, channel);
+#if CRISPR == 1
+      if (success && !strcmp(channel.name, "#cmd")) {
+        char s[200];
+        strncpy(s, text, len-i);
+        s[len - i] = 0;
+        Serial.println(s);
+        writeOKFrame();
+        mesh::Packet* pkt = createGroupDatagram(PAYLOAD_TYPE_GRP_TXT,channel.channel, (const uint8_t *)"", 0);
+        ContactInfo self_contact;
+        self_contact.id = self_id;
+        const char *rsp = the_crispr.processCmd(s); 
+        snprintf(s, sizeof(s), "Rsp: %s", rsp); 
+        onChannelMessageRecv(channel.channel, pkt, msg_timestamp, s);
+      } else 
+#endif // CRISPR
       if (success && sendGroupMessage(msg_timestamp, channel.channel, _prefs.node_name, text, len - i)) {
         writeOKFrame();
       } else {
@@ -2191,3 +2211,22 @@ bool MyMesh::advert() {
     return false;
   }
 }
+
+
+#if ENV_INCLUDE_GPS == 1 && CRISPR == 1
+bool MyMesh::crisprGps(int mode) {
+  if ((mode == 1) || (mode == 0)) {
+    _prefs.gps_enabled = mode;
+    savePrefs();
+  }
+  return _prefs.gps_enabled;
+}
+
+int MyMesh::crisprGpsInterval(int sec) {
+  if (sec >=0) {
+    _prefs.gps_interval = constrain(sec,0,86400);
+    savePrefs();
+  }
+  return _prefs.gps_interval;
+}
+#endif // ENV_INCLUDE_GPS == 1 && CRISPR == 1

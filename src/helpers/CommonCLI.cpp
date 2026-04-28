@@ -2,11 +2,14 @@
 #include "CommonCLI.h"
 #include "TxtDataHelpers.h"
 #include "AdvertDataHelpers.h"
-#include "TxtDataHelpers.h"
 #include <RTClib.h>
 
 #ifndef BRIDGE_MAX_BAUD
 #define BRIDGE_MAX_BAUD 115200
+#endif
+
+#ifndef LORA_MAX_TX_POWER
+#define LORA_MAX_TX_POWER LORA_TX_POWER
 #endif
 
 // Believe it or not, this std C function is busted on some platforms!
@@ -100,7 +103,7 @@ void CommonCLI::loadPrefsInt(FILESYSTEM* fs, const char* filename) {
     _prefs->bw = constrain(_prefs->bw, 7.8f, 500.0f);
     _prefs->sf = constrain(_prefs->sf, 5, 12);
     _prefs->cr = constrain(_prefs->cr, 5, 8);
-    _prefs->tx_power_dbm = constrain(_prefs->tx_power_dbm, -9, 30);
+    _prefs->tx_power_dbm = constrain(_prefs->tx_power_dbm, -9, LORA_MAX_TX_POWER);
     _prefs->multi_acks = constrain(_prefs->multi_acks, 0, 1);
     _prefs->adc_multiplier = constrain(_prefs->adc_multiplier, 0.0f, 10.0f);
     _prefs->path_hash_mode = constrain(_prefs->path_hash_mode, 0, 2);   // NOTE: mode 3 reserved for future
@@ -286,8 +289,7 @@ void CommonCLI::handleCommand(uint32_t sender_timestamp, char* command, char* re
       // change admin password
       StrHelper::strncpy(_prefs->password, &command[9], sizeof(_prefs->password));
       savePrefs();
-      sprintf(reply, "password now: ");
-      StrHelper::strncpy(&reply[14], _prefs->password, 160-15);   // echo back just to let admin know for sure!!
+      sprintf(reply, "password now: %s", _prefs->password);   // echo back just to let admin know for sure!!
     } else if (memcmp(command, "clear stats", 11) == 0) {
       _callbacks->clearStats();
       strcpy(reply, "(OK - stats reset)");
@@ -482,6 +484,13 @@ void CommonCLI::handleSetCmd(uint32_t sender_timestamp, char* command, char* rep
     _prefs->airtime_factor = atof(&config[3]);
     savePrefs();
     strcpy(reply, "OK");
+#ifdef USER_GPIO_PIN_0
+  } else if (memcmp(config, "gpio ", 5) == 0) {
+    int seton = !memcmp(&config[5],"on",2);
+    pinMode(USER_GPIO_PIN_0, OUTPUT);
+    digitalWrite(USER_GPIO_PIN_0, seton ? HIGH : LOW);
+    sprintf(reply, "OK - set %s", digitalRead(USER_GPIO_PIN_0) ? "on" : "off");
+#endif
   } else if (memcmp(config, "int.thresh ", 11) == 0) {
     _prefs->interference_threshold = atoi(&config[11]);
     savePrefs();
@@ -657,10 +666,15 @@ void CommonCLI::handleSetCmd(uint32_t sender_timestamp, char* command, char* rep
       strcpy(reply, "OK");
     }
   } else if (memcmp(config, "tx ", 3) == 0) {
-    _prefs->tx_power_dbm = atoi(&config[3]);
-    savePrefs();
-    _callbacks->setTxPower(_prefs->tx_power_dbm);
-    strcpy(reply, "OK");
+    int8_t tx = atoi(&config[3]);
+    if ((tx < -9) || (tx > LORA_MAX_TX_POWER)) {
+      sprintf(reply, "Error: tx must be between -9 to %d", LORA_MAX_TX_POWER);
+    } else {
+      _prefs->tx_power_dbm = tx;
+      savePrefs();
+      _callbacks->setTxPower(_prefs->tx_power_dbm);
+      strcpy(reply, "OK");
+    }
   } else if (sender_timestamp == 0 && memcmp(config, "freq ", 5) == 0) {
     _prefs->freq = atof(&config[5]);
     savePrefs();
@@ -728,8 +742,7 @@ void CommonCLI::handleSetCmd(uint32_t sender_timestamp, char* command, char* rep
       strcpy(reply, "Error: unsupported by this board");
     };
   } else {
-    strcpy(reply, "unknown config: ");
-    StrHelper::strncpy(&reply[16], config, 160-17);
+    sprintf(reply, "unknown config: %s", config);
   }
 }
 
@@ -742,6 +755,10 @@ void CommonCLI::handleGetCmd(uint32_t sender_timestamp, char* command, char* rep
     sprintf(reply, "> %d.%d%%", dc_int, dc_frac);
   } else if (memcmp(config, "af", 2) == 0) {
     sprintf(reply, "> %s", StrHelper::ftoa(_prefs->airtime_factor));
+#ifdef USER_GPIO_PIN_0
+  } else if (memcmp(config, "gpio", 4) == 0) {
+    sprintf(reply, "> %s", digitalRead(USER_GPIO_PIN_0) ? "on" : "off");
+#endif
   } else if (memcmp(config, "int.thresh", 10) == 0) {
     sprintf(reply, "> %d", (uint32_t) _prefs->interference_threshold);
   } else if (memcmp(config, "agc.reset.interval", 18) == 0) {
@@ -787,11 +804,10 @@ void CommonCLI::handleGetCmd(uint32_t sender_timestamp, char* command, char* rep
   } else if (memcmp(config, "direct.txdelay", 14) == 0) {
     sprintf(reply, "> %s", StrHelper::ftoa(_prefs->direct_tx_delay_factor));
   } else if (memcmp(config, "owner.info", 10) == 0) {
-    auto start = reply;
     *reply++ = '>';
     *reply++ = ' ';
     const char* sp = _prefs->owner_info;
-    while (*sp && reply - start < 159) {
+    while (*sp) {
       *reply++ = (*sp == '\n') ? '|' : *sp;    // translate newline back to orig '|'
       sp++;
     }

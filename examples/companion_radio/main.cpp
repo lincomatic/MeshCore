@@ -41,6 +41,41 @@ static uint32_t _atoi(const char* sp) {
     #ifndef TCP_PORT
       #define TCP_PORT 5000
     #endif
+
+    static bool wifi_sta_connected = false;
+    static unsigned long wifi_next_reconnect_ms = 0;
+
+    static void onWifiEvent(WiFiEvent_t event, WiFiEventInfo_t) {
+      switch (event) {
+        case ARDUINO_EVENT_WIFI_STA_GOT_IP:
+          wifi_sta_connected = true;
+          wifi_next_reconnect_ms = 0;
+          break;
+        case ARDUINO_EVENT_WIFI_STA_DISCONNECTED:
+          wifi_sta_connected = false;
+          wifi_next_reconnect_ms = millis() + 1000;
+          break;
+        default:
+          break;
+      }
+    }
+
+    static void maintainWifiConnection() {
+      if (wifi_sta_connected || WiFi.status() == WL_CONNECTED) {
+        wifi_sta_connected = true;
+        return;
+      }
+
+      unsigned long now = millis();
+      if ((long)(now - wifi_next_reconnect_ms) < 0) {
+        return;
+      }
+
+      if (!WiFi.reconnect()) {
+        WiFi.begin(WIFI_SSID, WIFI_PWD);
+      }
+      wifi_next_reconnect_ms = now + 5000;
+    }
   #elif defined(BLE_PIN_CODE)
     #include <helpers/esp32/SerialBLEInterface.h>
     SerialBLEInterface serial_interface;
@@ -195,6 +230,10 @@ void setup() {
 
 #ifdef WIFI_SSID
   board.setInhibitSleep(true);   // prevent sleep when WiFi is active
+  WiFi.mode(WIFI_STA);
+  WiFi.setAutoReconnect(true);
+  WiFi.persistent(false); // saves WiFi credentials in RAM, not flash, so that they can be updated by the app each session without wearing out flash
+  WiFi.onEvent(onWifiEvent);
   WiFi.begin(WIFI_SSID, WIFI_PWD);
   serial_interface.begin(TCP_PORT);
 #elif defined(BLE_PIN_CODE)
@@ -223,6 +262,10 @@ void setup() {
 }
 
 void loop() {
+#if defined(ESP32) && defined(WIFI_SSID)
+  maintainWifiConnection();
+#endif
+
   the_mesh.loop();
   sensors.loop();
 #ifdef DISPLAY_CLASS

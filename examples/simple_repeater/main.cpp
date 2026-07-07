@@ -27,7 +27,7 @@ void setup() {
   Serial.begin(115200);
   delay(1000);
 
-  board.begin();
+
 
 #if defined(MESH_DEBUG) && defined(NRF52_PLATFORM)
   // give some extra time for serial to settle so
@@ -35,6 +35,9 @@ void setup() {
   delay(5000);
 #endif
 
+  MESH_DEBUG_PRINTLN("board begin start");
+  board.begin();
+  MESH_DEBUG_PRINTLN("board begin end");
   // For power saving
   lastActive = millis(); // mark last active time since boot
 
@@ -86,13 +89,17 @@ void setup() {
 
   command[0] = 0;
 
+  MESH_DEBUG_PRINTLN("sensor begin start");
   sensors.begin();
+  MESH_DEBUG_PRINTLN("sensor begin end");
 
   the_mesh.begin(fs);
+  MESH_DEBUG_PRINTLN("mesh begin end");
 
 #ifdef DISPLAY_CLASS
   ui_task.begin(the_mesh.getNodePrefs(), FIRMWARE_BUILD_DATE, FIRMWARE_VERSION);
 #endif
+  MESH_DEBUG_PRINTLN("uitask begin end");
 
   // send out initial zero hop Advertisement to the mesh
 #if ENABLE_ADVERT_ON_BOOT == 1

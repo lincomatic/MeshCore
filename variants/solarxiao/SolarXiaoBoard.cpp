@@ -49,6 +49,7 @@ void SolarXiaoBoard::begin() {
 #endif
 
   Wire.begin();
+  MESH_DEBUG_PRINTLN("wire begin done");
 
 #ifdef P_LORA_TX_LED
   pinMode(P_LORA_TX_LED, OUTPUT);

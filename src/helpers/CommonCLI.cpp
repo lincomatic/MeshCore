@@ -9,6 +9,10 @@
 #define BRIDGE_MAX_BAUD 115200
 #endif
 
+#ifndef LORA_MAX_TX_POWER
+#define LORA_MAX_TX_POWER LORA_TX_POWER
+#endif
+
 // Believe it or not, this std C function is busted on some platforms!
 static uint32_t _atoi(const char* sp) {
   uint32_t n = 0;
@@ -113,7 +117,7 @@ void CommonCLI::loadPrefsInt(FILESYSTEM* fs, const char* filename) {  // Legacy 
     _prefs->bw = constrain(_prefs->bw, 7.8f, 500.0f);
     _prefs->sf = constrain(_prefs->sf, 5, 12);
     _prefs->cr = constrain(_prefs->cr, 5, 8);
-    _prefs->tx_power_dbm = constrain(_prefs->tx_power_dbm, -9, 30);
+    _prefs->tx_power_dbm = constrain(_prefs->tx_power_dbm, -9, LORA_MAX_TX_POWER);
     _prefs->multi_acks = constrain(_prefs->multi_acks, 0, 1);
     _prefs->adc_multiplier = constrain(_prefs->adc_multiplier, 0.0f, 10.0f);
     _prefs->path_hash_mode = constrain(_prefs->path_hash_mode, 0, 2);   // NOTE: mode 3 reserved for future
@@ -706,7 +710,7 @@ void CommonCLI::handleSetCmd(uint32_t sender_timestamp, char* command, char* rep
       strcpy(reply, "OK");
     }
   } else if (memcmp(config, "tx ", 3) == 0) {
-    _prefs->tx_power_dbm = atoi(&config[3]);
+    _prefs->tx_power_dbm = constrain(atoi(&config[3]),-9,LORA_MAX_TX_POWER);
     savePrefs();
     _callbacks->setTxPower(_prefs->tx_power_dbm);
     strcpy(reply, "OK");
